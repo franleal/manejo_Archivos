@@ -1,155 +1,99 @@
-const fs = require("fs");
+
+const fs = require('fs')
 
 class Contenedor {
-    constructor(archivo) {
-        this.archivo = archivo;
+
+  constructor(archivo) {
+    this.archivo = archivo;
+  }
+
+  //Save---------------------------------------------------------------------------
+  async save(products) {
+    try {
+      //Generar archivo
+      if(fs.existsSync(this.archivo)) {
+          let info = await fs.promises.readFile(this.archivo, 'utf8')
+          let result = JSON.parse(info)
+
+          
+          if (result.length > 0) {
+              let lastId = result.length + 1
+              let newProduct = {
+                  id: lastId,
+                  ...products
+              }
+              result.push(newProduct)
+              await fs.promises.writeFile(this.archivo, JSON.stringify(result, null, 2))
+              return lastId
+          } else { 
+              let newProduct = {
+                  id: 1,
+                  ...products
+              }
+              result.push(newProduct)
+              await fs.promises.writeFile(this.archivo, JSON.stringify(result, null, 2))
+              return 1
+          }
+      } else {
+          //No existe el archivo
+          let newProduct = {
+              id: 1,
+              ...products
+          }
+          await fs.promises.writeFile(this.archivo, JSON.stringify([newProduct], null, 2))
+          return 1
+      }
+    } catch (error) {
+        console.log(error)
     }
+  }
 
-    exists(archivo) {
-        try {
-            if (!fs.existsSync(archivo)) {
-                throw new Error("El archivo no existe");
+  //getById---------------------------------------------------------------------------
+  async getById(id) {
+    try {
+        let info = await fs.promises.readFile(this.archivo, 'utf8')
+        let result = JSON.parse(info)
 
-            } else {
-                return true;
-            }
-        } catch (error) {
-            console.log(`Error buscando el archivo: ${error.message}`);
+        return result.find(product => product.id === id)
+    } catch (error) {
+        console.log(`El archivo de ${id} no existe`)
+    }
+  }
+
+  //getAll---------------------------------------------------------------------------
+  async getAll() {
+    try {
+        let info = await fs.promises.readFile(this.archivo, 'utf8')
+        let result = JSON.parse(info)
+        return result
+    } catch (error) {
+        console.log(error)
+    }
+  }
+
+  //deleteById----------------------------------------------------------------------------
+  async deleteById(id) {
+    try {
+        let info = await fs.promises.readFile(this.archivo, 'utf8')
+        let result = JSON.parse(info)
+
+        const deleteObject = result.find(product => product.id === id)
+        if(deleteObject) {
+            const index = result.indexOf(deleteObject)
+            result.splice(1, index)
+            await fs.promises.writeFile(this.archivo, JSON.stringify(result, null, 2))
+        } else {
+            console.log(`Id ${id} no existe`)
         }
+    } catch (error) {
+        console.log(error)
     }
+  }
 
-    async readFile(archivo) {
-        try {
-            const data = fs.readFileSync(archivo);
-            return JSON.parse(data);
-        } catch (error) {
-            console.log(`Error leyendo el archivo: ${error.message}`);
-        }
-    }
-
-    async writeFile(archivo, contenido) {
-        try {
-            fs.writeFileSync(archivo, JSON.stringify(contenido, null, 4));
-        } catch (error) {
-            console.log(`Error escribiendo el archivo: ${error.message}`);
-        }
-    }
-
-    async save(producto) {
-        try {
-            if (!this.exists(this.archivo)) {
-                console.log(`Se procede a crear datos nuevos`);
-                let arrayProductos = [];
-                producto = { id: 1, ...producto };
-                arrayProductos.push(producto);
-                console.log(`Agregando producto...`);
-                fs.writeFile(this.archivo, arrayProductos);
-                console.log(
-                    `Se agrego el producto nuevo con el id: ${producto.id}`
-                );
-                return producto.id;
-            } else {
-                if (this.readFile(this.archivo)) {
-                    console.log(`Leyendo archivo...`);
-                    const data = await this.readFile(this.archivo);
-                    if (data.length === 0) {
-                        producto = { id: 1, ...producto };
-                    } else {
-                        let ultimoId = data[data.length - 1].id;
-                        producto = { id: ultimoId + 1, ...producto };
-                    }
-                    console.log(`Agregando producto al archivo...`);
-                    data.push(producto);
-                    this.writeFile(this.archivo, data);
-                    console.log(
-                        `Se agrego el nuevo producto con el id: ${producto.id}`
-                    );
-                    return producto.id;
-                }
-            }
-        } catch (error) {
-            console.log(`Error agregando el producto: ${error.message}`);
-        }
-    }
-
-    async getById(id) {
-        try {
-            if (this.exists(this.archivo)) {
-                const data = await this.readFile(this.archivo);
-                const dataId = data.filter(item => item.id === id);
-                if (dataId.length === 0) {
-                    throw new Error(
-                        "No se encontro un producto con el id solicitado"
-                    );
-                } else {
-                    console.log(`Producto con id ${id} encontrado:\n`, dataId);
-                    return dataId;
-                }
-            }
-        } catch (error) {
-            console.log(`Error buscando producto con el id: ${error.message}`);
-        }
-    }
-
-    async getAll() {
-        try {
-            if (this.exists(this.archivo)) {
-                console.log(`Leyendo archivo...`);
-                const data = await this.readFile(this.archivo);
-                if (data.length !== 0) {
-                    console.log(`Archivo con contenido:`);
-                    console.log(data);
-                    return data;
-                } else {
-                    throw new Error(`El archivo ${this.archivo} esta vacio`);
-                }
-            }
-        } catch (error) {
-            console.log(
-                `Error obteniendo todos los productos: ${error.message}`
-            );
-        }
-    }
-
-    async deleteById(id) {
-        try {
-            if (this.exists(this.archivo)) {
-                const data = await this.readFile(this.archivo);
-                console.log(`Buscando producto con el id solicitado...`);
-                if (data.some(item => item.id === id)) {
-                    const data = await this.readFile(this.archivo);
-                    console.log(`Eliminando producto con id solicitado...`);
-                    const datos = data.filter(item => item.id !== id);
-                    this.writeFile(this.archivo, datos);
-                    console.log(`Producto con el id ${id} eliminado`);
-                } else {
-                    throw new Error(
-                        `No se encontro el producto con el id ${id}`
-                    );
-                }
-            }
-        } catch (error) {
-            console.log(
-                `Ocurrio un error eliminando el producto con el id solicitado: ${error.message}`
-            );
-        }
-    }
-
-    async deleteAll() {
-        try {
-            let nuevoArray = [];
-            console.log(`Borrando datos...`);
-            await this.writeFile(this.archivo, nuevoArray);
-            console.log(
-                `Se borraron todos los datos del archivo ${this.archivo}`
-            );
-        } catch (error) {
-            console.log(
-                `Ocurrio un error eliminando los datos: ${error.message}`
-            );
-        }
-    }
+  //deleteAll------------------------------------------------------------------------
+  async deleteAll() {
+    await fs.promises.writeFile(this.archivo, JSON.stringify([]))
+  }
 }
 
-
-module.exports = Contenedor;
+module.exports = Contenedor
